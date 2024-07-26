@@ -1,0 +1,23 @@
+
+
+services:
+  # redis:
+  #   container_name: redis
+  #   image: redis:7
+  #   ports:
+  #     - 6379:6379
+  
+  # front:
+  #   container_name: react
+  #   build: frontend/
+  #   image: react:aamhamdi
+  #   ports:
+  #     - 5173:5173
+  
+  server:
+    container_name: django
+    build: backend/
+    image: django:aamhamdi
+    ports:
+      - 8000:8000
+
