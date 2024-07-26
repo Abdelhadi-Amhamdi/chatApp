@@ -12,9 +12,8 @@ RUN . venv/bin/activate && pip install -r requirement.txt
 
 COPY . .
 
-# RUN chmod +x setup.sh
+RUN chmod +x setup.sh
 
 EXPOSE 8000
 
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "mysite.asgi:application"]
-
+CMD ["bash", "setup.sh"]

@@ -33,6 +33,7 @@ function Room() {
 	let {data} = useLoaderData()
 	return (
 		<div className='relative h-full'>
+			<h2>messages</h2>
 			<ul>
 				{
 					data.messages.map(item => {
