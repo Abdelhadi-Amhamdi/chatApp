@@ -1,15 +1,12 @@
-import { Outlet, Link, redirect } from "react-router-dom"
+import { Outlet, Link } from "react-router-dom"
+import webSocketService from "../socket"
+import { useEffect } from 'react'
 
-export function loader({params}) {
-	// console.log("start connection")
-	// const chatSocket = new WebSocket(
-	// 	'ws://localhost:8000/ws/chat/abc/'
-	// );
-	return null
-}
 
 export default function Index() {
-	
+	useEffect(() => {
+		webSocketService.connect();
+	})
 	return (
 		<>
 			<div className='flex h-[100vh] border-[#e3e3e3]'>

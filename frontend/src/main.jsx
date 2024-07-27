@@ -1,54 +1,56 @@
-import React, { useContext } from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import {createBrowserRouter, RouterProvider,Form, json, useLoaderData, useActionData} from 'react-router-dom'
-
+import {createBrowserRouter, RouterProvider} from 'react-router-dom'
 import './index.css'
-
 import webSocketService from './socket'
-
-import Index, {loader as roomLoader} from './routes'
-
-async function action({request, params}) {
-	const formData = await request.formData()
-	const data = Object.fromEntries(formData)
-	const context = {
-		"message" : data.message,
-		"command" : "new_message",
-		"from" : "aamhamdi",
-	}
-	webSocketService.sendMessage(context)
-	console.log(webSocketService.data)
-	return null
-}
-
-async function loader({params}) {
-	console.log("trigred again")
-	webSocketService.connect('ws://localhost:8000/ws/chat/abc/')
-	webSocketService.sendMessage({'command': 'fetch_messages'})
-	await webSocketService.waitForSocketConnection()
-	return {"data" : webSocketService.data}
-}
+import Index from './routes'
 
 function Room() {
-	let {data} = useLoaderData()
+	const [ messages, setMessages ] = useState([])
+	const [ text, setText ] = useState('')
+	webSocketService.addCallbacks(setMessages)
+
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			webSocketService.sendMessage({'command':"fetch_messages"})
+		}, 300)
+		return () => {
+			clearTimeout(timer)
+		}
+	}, [])
+
+	function sendMessage() {
+		webSocketService.sendMessage({'command':"new_message", 'from' : "aamhamdi", 'message' : text})
+	}
+	
 	return (
 		<div className='relative h-full'>
-			<h2>messages</h2>
 			<ul>
 				{
-					data.messages.map(item => {
+					messages.map(item => {
 						return <h1 key={item.timestamp}>{item.author} : {item.content}</h1>
 					})
-				}
+				} 
 			</ul>
-			<Form method="post" id="message-data"  className='w-full flex justify-center'>
-				<input type="text" name="message" placeholder='message...' className='border-[1px] px-2 rounded-lg absolute bottom-2 w-[50%] h-[40px]' />
-			</Form>
+			<div className='w-full flex justify-center'>
+				<input 
+					type="text" 
+					name="message" 
+					placeholder='message...' 
+					className='border-[1px] px-2 rounded-lg absolute bottom-2 w-[50%] h-[40px]'
+					onChange={(e) => setText(e.target.value)}
+					value={text}
+					onKeyUp={(e) => {
+						if (e.key == 'Enter') {
+							sendMessage()
+							setText('')
+						}
+					}}
+				/>
+			</div>
 		</div>
 	)
 }
-
-
 
 const router = createBrowserRouter([
 	{
@@ -58,8 +60,6 @@ const router = createBrowserRouter([
 			{
 				path : '/room/:roomId',
 				element : <Room />,
-				loader : loader,
-				action : action
 			},
 		]
 	},
