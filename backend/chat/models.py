@@ -13,3 +13,7 @@ class Message(models.Model):
     
     def last_10_messages(self):
         return Message.objects.order_by('-timestamp').all()[:10]
+    
+
+
+
