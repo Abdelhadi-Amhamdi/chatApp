@@ -23,6 +23,8 @@ services:
     image: django:aamhamdi
     ports:
       - 8000:8000
+    volumes:
+      - /goinfre/aamhamdi/chatApp/backend:/app
     tty: true
 
 
