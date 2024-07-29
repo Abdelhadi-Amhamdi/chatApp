@@ -13,6 +13,7 @@ class WebSocketService {
   constructor() {
     this.socket = null;
     this.callbacks = []
+    this.queue = [];
   }
 
   addCallbacks(setData) {
@@ -20,13 +21,15 @@ class WebSocketService {
   }
 
 
-  connect() {
+  connect(url) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN)
+      this.close()
     if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
-      this.socket = new WebSocket('ws://localhost:8000/ws/chat/abc/');
-      
+      this.socket = new WebSocket(url);
       
       this.socket.onopen = () => {
         console.log("WebSocket connection established");
+        this.flushQueue()
       };
 
       this.socket.onclose = () => {
@@ -51,12 +54,22 @@ class WebSocketService {
   sendMessage(message) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
+    } else {
+      this.queue.push(message);
     } 
+  }
+
+  flushQueue() {
+    while (this.queue.length > 0) {
+      const message = this.queue.shift();
+      this.socket.send(JSON.stringify(message));
+    }
   }
 
   close() {
     if (this.socket) {
       this.socket.close();
+      this.socket = null
     }
   }
 }

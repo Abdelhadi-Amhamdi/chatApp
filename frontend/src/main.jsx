@@ -1,34 +1,91 @@
-import React, { useEffect, useState } from 'react'
+import React, {useContext, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import ReactDOM from 'react-dom/client'
-import {createBrowserRouter, RouterProvider, Link} from 'react-router-dom'
+import {Route, Routes, BrowserRouter, useParams, Link} from 'react-router-dom'
 import './index.css'
 import webSocketService from './socket'
 import Index from './routes'
+import { PrivateRoute } from './utils/privateRoutes'
+import AuthContextProvider, {AuthContext} from './contexts/AuthContext'
+
+import Login from './auth/login'
+import Signup from './auth/signup'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons'
+
+function UserMessage({item}) {
+	return (
+		<>
+			<div key={item.timestamp} className='mt-4 right-2 flex justify-end w-full'>
+				<div className='flex items-center'>
+					<h1 className='bg-slate-600 text-white p-2 rounded-lg'>{item.content}</h1>
+					<img className='w-[40px] border-[1px] ml-4 rounded-full' src="https://robohash.org/i55s8p3.png?size=200x200" alt="" />
+				</div>
+			</div>
+		</>
+	)
+}
+function OtherMessage({item}) {
+	return (
+		<>
+			<div key={item.timestamp} className='flex justify-start mt-4 w-full'>
+				<div className='flex items-center'>
+					<img className='w-[40px] border-[1px] mr-4 rounded-full' src="https://robohash.org/i55s8p3.png?size=200x200" alt="" />
+					<h1 className='bg-slate-600 text-white p-2 rounded-lg'>{item.content}</h1>
+				</div>
+			</div>
+		</>
+	)
+}
 
 function Room() {
 	const [ messages, setMessages ] = useState([])
 	const [ text, setText ] = useState('')
-	webSocketService.addCallbacks(setMessages)
+	const { roomId, userId } = useParams()
+	const { user } = useContext(AuthContext)
+	const areaRef = useRef(null)
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			webSocketService.sendMessage({'command':"fetch_messages"})
+			webSocketService.connect(`ws://localhost:8000/ws/chat/${roomId}/`);
+		}, 200)
+		return () => clearTimeout(timer)
+	}, [roomId])
+
+	webSocketService.addCallbacks(setMessages)
+	
+	useEffect(() => {
+		const timer = setTimeout(async () => {
+			webSocketService.sendMessage({'command':"fetch_messages", 'roomId': roomId})
 		}, 300)
-		return () => {
-			clearTimeout(timer)
-		}
-	}, [])
+		return () => clearTimeout(timer)
+	}, [roomId])
 
 	function sendMessage() {
-		webSocketService.sendMessage({'command':"new_message", 'from' : "aamhamdi", 'message' : text})
+		webSocketService.sendMessage({
+			'command':"new_message",
+			'from' : user.username,
+			'message' : text,
+			'roomId' : roomId
+		})
+		areaRef.current.scroll({top: areaRef.current.scrollHeight, behavior:'instant'});
 	}
-	
+
 	return (
 		<div className='relative h-full'>
-			<ul>
+			<div className="header h-[70px] w-full rounded-lg bg-[#f7f7f7] py-2 px-4 border-[1px] flex items-center">
+				<Link to="/"><FontAwesomeIcon className='mr-4 cursor-pointer' icon={faArrowLeft} /></Link>
+				<img src="https://robohash.org/i55s8p3.png?size=200x200" className='mr-4 w-[40px] bg-white rounded-lg border-[1px]' alt="avatar" />
+				<div>
+					<h1 className='capitalize'>{userId}</h1>
+					<p className='text-[10px]'>active</p>
+				</div>
+			</div>
+			<ul ref={areaRef} className='p-4 relative h-[80vh] overflow-y-scroll'>
 				{
 					messages.map(item => {
-						return <h1 key={item.timestamp}>{item.author} : {item.content}</h1>
+						const is_min = item.author == user.username
+						return is_min ? <UserMessage key={item.timestamp} item={item} /> : <OtherMessage key={item.timestamp} item={item} />
 					})
 				} 
 			</ul>
@@ -52,63 +109,26 @@ function Room() {
 	)
 }
 
-function Login() {
+function App() {
 	return (
-		<>
-			<div className='h-full flex justify-center items-center'>
-				<div className='p-10 w-[50%] h-[32vh] rounded-lg border-[1px]'>
-					<div className="header block text-center">
-						<h1 className='text-2xl'>Welcome Back</h1>
-					</div>
-					<div className='mt-10'>
-						<label className='block w-full' htmlFor="username">username :</label>
-						<input 
-							className='block bg-[#f7f7f7] px-4 mt-2 border-[1px] rounded-lg h-[40px] w-full' 
-							type="text" 
-							name='username'
-							placeholder='joe'
-						/>
-						<label className='block mt-4' htmlFor="password">password : </label>
-						<input 
-							className='block mt-2 bg-[#f7f7f7] border-[1px] px-4 rounded-lg h-[40px] w-full'
-							type="password" 
-							name='password'
-							placeholder='*********'
-						/>
-						<p className='mt-4 text-[12px]'>forget Password ?</p>
-						<button className='mt-4 block bg-[#f7f7f7] w-full h-[40px] rounded-lg border-[1px] uppercase'>login</button>
-						<p className='mt-4 text-[12px]'>you dont have account ? <Link to="/auth/signup">signup</Link></p>
-		
-					</div>
-				</div>
-			</div>
-		</>
+		<Routes>
+			<Route exact path='/' element={<PrivateRoute />} >
+				<Route exact path='/' element={<Index/>}>
+					<Route path="/room/:roomId/:userId/" element={<Room />} />
+				</Route>
+			</Route>
+			<Route path="/auth/login" element={<Login />} />
+			<Route path="/auth/signup" element={<Signup />} />
+		</Routes>
 	)
 }
 
-const router = createBrowserRouter([
-	{
-		path : '/',
-		element: <Index />,
-		children : [
-			{
-				path : '/room/:roomId',
-				element : <Room />,
-			},
-			{
-				path : '/auth/login',
-				element : <Login />
-			},
-			{
-				path : '/auth/signup',
-				element : <div>signup</div>
-			},
-		]
-	},
-])
-
 ReactDOM.createRoot(document.getElementById('root')).render(
 	<React.StrictMode>
-	 <RouterProvider router={router} />
+		<BrowserRouter>
+			<AuthContextProvider>
+				<App />
+			</AuthContextProvider>
+		</BrowserRouter>
 	</React.StrictMode>,
 )
